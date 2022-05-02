@@ -20,19 +20,19 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
   constructor(private el: ElementRef, private ngControl: NgControl) { }
 
   @HostListener('focus', ['$event']) onFocus(e: any) {
-    var value = e.target.value;
-    this.setSectionRange(0, value.length);
+    // var value = e.target.value;
+    // this.setSectionRange(0, value.length);
   }
 
   @HostListener('mousedown') onMousedown() {
-    var element = this.el.nativeElement;
-    const posStart = element.selectionStart;
-    const posEnd = element.selectionEnd;
-    const length = element.value.length;
+    // var element = this.el.nativeElement;
+    // const posStart = element.selectionStart;
+    // const posEnd = element.selectionEnd;
+    // const length = element.value.length;
 
-    if (posStart === 0 && posEnd === length) {
-      this.setSectionRange(0, 0);
-    }
+    // if (posStart === 0 && posEnd === length) {
+    //   this.setSectionRange(0, 0);
+    // }
   }
 
   @HostListener('keydown', ['$event']) onKeydown(e: any) {
@@ -114,7 +114,7 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
     const inputConfig = changes.config.currentValue;
     this.config = {
       align: inputConfig.align || 'right',
-      allowNegative: inputConfig.allowNegative || true,
+      allowNegative: inputConfig.allowNegative == undefined ? true : inputConfig.allowNegative,
       precision: inputConfig.precision || 0,
       maxIntegerDigit: inputConfig.maxIntegerDigit || 15
     };
