@@ -20,6 +20,6 @@ export class AppComponent implements OnInit {
   }
 
   setValue() {
-    this.value = 100000000000.123456;
+    this.value = 1000000.123456;
   }
 }
