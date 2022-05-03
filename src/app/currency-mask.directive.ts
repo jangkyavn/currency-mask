@@ -96,10 +96,10 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
 
         var isEmpty = !element.value;
 
-        element.value = this.convertFromSetValue(element.value || 0);
+        const oldLength = element.value.toString().split('.').length - 1;
+        element.value = this.convertFromSetValue(element.value || '0');
         element.value = this.convertNegativeValue(element.value);
         const oldValue = element.value.toString().replaceAll('.', '').replaceAll(',', '.');
-        const oldLength = element.value.toString().split('.').length - 1;
 
         var transFormValue = this.formatToCurrency(oldValue) as any;
         var numValue = this.stringToNumber(transFormValue);
@@ -108,6 +108,7 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
         element.value = transFormValue;
         element.style.textAlign = this.config.align;
         const newLength = element.value.toString().split('.').length - 1;
+
         let offset = newLength - oldLength;
         if (this.isNegative) {
           posStart = numValue < 0 ? posStart : (posStart - 2);
@@ -140,6 +141,7 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
     setTimeout(() => {
       var element = this.el.nativeElement;
       element.value = this.formatToCurrency(element.value);
+      element.style.textAlign = this.config.align;
     }, 0);
   }
 
@@ -178,9 +180,10 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
     }
   }
 
-  convertFromSetValue(value: string) {
+  convertFromSetValue(value: any) {
     var bn = new BigNumber(value);
     if (!bn.isNaN()) {
+      value = value.replaceAll('.', '');
       return this.formatToCurrency(value);
     }
 
