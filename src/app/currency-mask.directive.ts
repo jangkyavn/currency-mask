@@ -49,6 +49,15 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
       }
     }
 
+    if (e.key === 'Backspace') {
+      var element = this.el.nativeElement;
+      const posStart = element.selectionStart;
+      const idxOfDecimalPoint = element.value.indexOf(',');
+      if (idxOfDecimalPoint !== -1 && idxOfDecimalPoint === (posStart - 1)) {
+        this.setSectionRange(idxOfDecimalPoint, idxOfDecimalPoint);
+      }
+    }
+
     if (!(keyCode < 48 || keyCode > 57)) {
       var idxOfChar = e.target.selectionStart;
       var currentValue = splice(idxOfChar, e.target.value, e.key);
