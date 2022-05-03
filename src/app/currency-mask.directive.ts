@@ -94,7 +94,7 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
         let posStart = element.selectionStart;
         let posEnd = element.selectionEnd;
 
-        element.value = this.convertFromSetValue(element.value);
+        element.value = this.convertFromSetValue(element.value || 0);
         element.value = this.convertNegativeValue(element.value);
         const oldValue = element.value.toString().replaceAll('.', '').replaceAll(',', '.');
         const oldLength = element.value.toString().split('.').length - 1;
