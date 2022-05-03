@@ -94,6 +94,8 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
         let posStart = element.selectionStart;
         let posEnd = element.selectionEnd;
 
+        var isEmpty = !element.value;
+
         element.value = this.convertFromSetValue(element.value || 0);
         element.value = this.convertNegativeValue(element.value);
         const oldValue = element.value.toString().replaceAll('.', '').replaceAll(',', '.');
@@ -113,6 +115,11 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
 
           this.setSectionRange(posStart, posEnd, 0, true);
         } else {
+          if (isEmpty || Math.floor(numValue).toString().length === 1) {
+            posStart = 1;
+            posEnd = 1;
+          }
+          
           this.setSectionRange(posStart, posEnd, offset);
         }
       }, 0);
