@@ -40,7 +40,7 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
     this.isNegative = false;
     const excepts = ['<', '>', 'ArrowLeft', 'ArrowRight', 'Tab', 'Backspace', 'Delete']
 
-    if ((keyCode < 48 || keyCode > 57) && !excepts.includes(e.key)) {
+    if ((keyCode < 48 || keyCode > 57) && !excepts.includes(e.key) && !(e.ctrlKey && (e.key === 'a' || e.key === 'A'))) {
       if (e.key === '-' && this.config.allowNegative === true) {
         this.isNegative = true;
       } else {
