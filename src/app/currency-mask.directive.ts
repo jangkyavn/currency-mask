@@ -124,7 +124,11 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
           this.setSectionRange(posStart + 1, posStart + 1);
           e.preventDefault();
         } else {
-          element.value = currentValue;
+          if (posStart === 0 && posEnd === value.length) { 
+            currentValue = e.key;
+          } else {
+            element.value = currentValue;
+          }
           element.selectionStart = posStart + (posEnd === value.length ? currentValue.length : 1);
           element.selectionEnd = posStart + (posEnd === value.length ? currentValue.length : 1);
           this.setValue(element, currentValue, false);
