@@ -1,7 +1,6 @@
 import { BigNumber } from 'bignumber.js';
 import { Directive, ElementRef, HostListener, Input, OnChanges, OnInit } from '@angular/core';
 import { NgControl } from '@angular/forms';
-import { splice } from './share';
 
 interface Config {
   align?: string;
@@ -15,7 +14,6 @@ interface Config {
 })
 export class CurrencyMaskDirective implements OnInit, OnChanges {
   @Input() config: Config = {};
-  isNegative = false;
 
   constructor(private el: ElementRef, private ngControl: NgControl) { }
 
@@ -36,13 +34,32 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
   }
 
   @HostListener('keydown', ['$event']) onKeydown(e: any) {
-    let keyCode = (e.keyCode ? e.keyCode : e.which);
-    this.isNegative = false;
-    const excepts = ['<', '>', 'ArrowLeft', 'ArrowRight', 'Tab', 'Backspace', 'Delete']
+    var element = this.el.nativeElement;
+    const posStart = element.selectionStart;
+    const value = element.value;
+    const keyCode = (e.keyCode ? e.keyCode : e.which);
+    let isNegative = false;
+    const excepts = ['<', '>', 'ArrowLeft', 'ArrowRight', 'Tab', 'Backspace', 'Delete'];
 
-    if ((keyCode < 48 || keyCode > 57) && !excepts.includes(e.key) && !(e.ctrlKey && (e.key === 'a' || e.key === 'A'))) {
+    if (!((keyCode >= 48 && keyCode <= 57) || (keyCode >= 96 && keyCode <= 105)) && !excepts.includes(e.key) && !(e.ctrlKey && (e.key === 'a' || e.key === 'A'))) {
       if (e.key === '-' && this.config.allowNegative === true) {
-        this.isNegative = true;
+        let negativeValue = '';
+
+        var isNegativeNumber = value.indexOf('-');
+        if (isNegativeNumber === 0) {
+          negativeValue = value.substring(1);
+        } else {
+          negativeValue = '-' + value;
+          isNegative = true;
+        }
+
+        var numValue = this.stringToNumber(negativeValue);
+        this.ngControl.control?.setValue(numValue, { emitEvent: false });
+        element.value = negativeValue;
+        const pos = isNegative ? (posStart + 1) : (posStart - 1);
+        this.setSectionRange(pos, pos);
+
+        e.preventDefault();
       } else {
         e.preventDefault();
         return;
@@ -50,17 +67,14 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
     }
 
     if (e.key === 'Backspace') {
-      var element = this.el.nativeElement;
-      const posStart = element.selectionStart;
       const idxOfDecimalPoint = element.value.indexOf(',');
       if (idxOfDecimalPoint !== -1 && idxOfDecimalPoint === (posStart - 1)) {
         this.setSectionRange(idxOfDecimalPoint, idxOfDecimalPoint);
       }
     }
 
-    if (!(keyCode < 48 || keyCode > 57)) {
-      var idxOfChar = e.target.selectionStart;
-      var currentValue = splice(idxOfChar, e.target.value, e.key);
+    if ((keyCode >= 48 && keyCode <= 57) || (keyCode >= 96 && keyCode <= 105)) {
+      var currentValue = this.splice(posStart, value, e.key);
 
       var splitDecimals = currentValue.split(',');
       var lengthOfInt = splitDecimals[0].split('.').join('').length;
@@ -68,18 +82,30 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
         e.preventDefault();
       }
 
-      var length = e.target.value.length;
-      if (splitDecimals.length > 1 && length === idxOfChar) {
+      var length = value.length;
+      if (splitDecimals.length > 1 && length === posStart) {
         e.preventDefault();
+      } else {
+        const decimalPosition = value.indexOf(',');
+
+        if (decimalPosition !== -1 && posStart > decimalPosition) {
+          var currentValue = this.typeDecimalPlace(value, posStart, e.key);
+          var numValue = this.stringToNumber(currentValue);
+          this.ngControl.control?.setValue(numValue, { emitEvent: false });
+          element.value = currentValue;
+          this.setSectionRange(posStart + 1, posStart + 1);
+
+          e.preventDefault();
+        }
       }
     }
   }
 
   @HostListener('keyup', ['$event']) onKeyup(e: any) {
     var element = this.el.nativeElement;
-
     let keyCode = (e.keyCode ? e.keyCode : e.which);
-    if (keyCode === 188 || e.key === ',') {
+
+    if ((keyCode === 188 || e.key === ',') && element.value.indexOf(',') !== -1) {
       const pos = element.value.indexOf(',');
       this.setSectionRange(pos + 1, pos + 1);
     }
@@ -88,7 +114,7 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
   ngOnInit(): void {
     this.init();
 
-    this.ngControl.valueChanges?.subscribe(() => {
+    this.ngControl.valueChanges?.subscribe((res: any) => {
       setTimeout(() => {
         var element = this.el.nativeElement;
         let posStart = element.selectionStart;
@@ -96,9 +122,9 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
 
         var isEmpty = !element.value;
 
+        element.value = this.formatCurrencyFromSetValue(element.value || '0', typeof res === 'number');
+
         const oldLength = element.value.toString().split('.').length - 1;
-        element.value = this.convertFromSetValue(element.value || '0');
-        element.value = this.convertNegativeValue(element.value);
         const oldValue = element.value.toString().replaceAll('.', '').replaceAll(',', '.');
 
         var transFormValue = this.formatToCurrency(oldValue) as any;
@@ -110,19 +136,12 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
         const newLength = element.value.toString().split('.').length - 1;
 
         let offset = newLength - oldLength;
-        if (this.isNegative) {
-          posStart = numValue < 0 ? posStart : (posStart - 2);
-          posEnd = numValue < 0 ? posEnd : (posEnd - 2);
-
-          this.setSectionRange(posStart, posEnd, 0, true);
-        } else {
-          if (isEmpty || Math.floor(numValue).toString().length === 1) {
-            posStart = 1;
-            posEnd = 1;
-          }
-          
-          this.setSectionRange(posStart, posEnd, offset);
+        if (isEmpty || Math.floor(numValue).toString().length === 1) {
+          posStart = 1;
+          posEnd = 1;
         }
+
+        this.setSectionRange(posStart, posEnd, offset);
       }, 0);
     });
   }
@@ -140,7 +159,7 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
   init() {
     setTimeout(() => {
       var element = this.el.nativeElement;
-      element.value = this.formatToCurrency(element.value);
+      // element.value = this.formatToCurrency(element.value);
       element.style.textAlign = this.config.align;
     }, 0);
   }
@@ -158,16 +177,6 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
     return bn.toNumber();
   }
 
-  convertNegativeValue(value: string) {
-    const splitNegative = value.split('-');
-    const length = splitNegative.length;
-    if (length % 2 === 0) {
-      return '-' + splitNegative.join('');
-    }
-
-    return splitNegative.join('');
-  }
-
   setSectionRange(posStart: number, posEnd: number, offset: number = 0, keepSeletion = false) {
     var element = this.el.nativeElement;
 
@@ -180,17 +189,33 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
     }
   }
 
-  convertFromSetValue(value: any) {
+  formatCurrencyFromSetValue(value: any, isSetValue: boolean) {
     var bn = new BigNumber(value);
     if (!bn.isNaN()) {
-      value = value.replaceAll('.', '');
+      if (!isSetValue) {
+        value = value.replaceAll('.', '');
+      }
+
       return this.formatToCurrency(value);
     }
 
     return value;
   }
 
+  typeDecimalPlace(source: string, index: number, char: string) {
+    var result = source.slice(0, -1);
+    return this.splice(index, result, char);
+  }
+
   formatThousands(x: any) {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  splice(idx: any, source: any, value: any) {
+    return `${source.slice(0, idx)}${value}${source.slice(idx)}`;
+  }
+
+  replaceAt(source: string, index: number, replacement: string) {
+    return source.substring(0, index) + replacement + source.substring(index + 1);
   }
 }

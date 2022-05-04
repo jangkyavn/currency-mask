@@ -14,7 +14,7 @@ interface Product {
 })
 export class AppComponent implements OnInit {
   text = 'mathang';
-  value = 20000.123;
+  value = 20000;
   test = '';
   listData: Product[] = [];
 
