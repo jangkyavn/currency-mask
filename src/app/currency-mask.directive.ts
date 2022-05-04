@@ -122,9 +122,8 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
 
         var isEmpty = !element.value;
 
-        element.value = this.formatCurrencyFromSetValue(element.value || '0', typeof res === 'number');
-
         const oldLength = element.value.toString().split('.').length - 1;
+        element.value = this.formatCurrencyFromSetValue(element.value || '0', typeof res === 'number');
         const oldValue = element.value.toString().replaceAll('.', '').replaceAll(',', '.');
 
         var transFormValue = this.formatToCurrency(oldValue) as any;
