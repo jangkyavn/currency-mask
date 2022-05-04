@@ -36,15 +36,19 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
   @HostListener('keydown', ['$event']) onKeydown(e: any) {
     var element = this.el.nativeElement;
     const posStart = element.selectionStart;
+    const posEnd = element.selectionEnd;
     const value = element.value;
     const keyCode = (e.keyCode ? e.keyCode : e.which);
     let isNegative = false;
     const excepts = ['<', '>', 'ArrowLeft', 'ArrowRight', 'Tab', 'Backspace', 'Delete'];
 
+    // Nếu không là số và không thuộc excepts và không là ctr + a
     if (!((keyCode >= 48 && keyCode <= 57) || (keyCode >= 96 && keyCode <= 105)) && !excepts.includes(e.key) && !(e.ctrlKey && (e.key === 'a' || e.key === 'A'))) {
+      // Nếu nhập '.' và config cho phép nhập âm
       if (e.key === '-' && this.config.allowNegative === true) {
         let negativeValue = '';
 
+        // Ẩn/hiện dấu âm
         var isNegativeNumber = value.indexOf('-');
         if (isNegativeNumber === 0) {
           negativeValue = value.substring(1);
@@ -53,6 +57,7 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
           isNegative = true;
         }
 
+        // set value
         var numValue = this.stringToNumber(negativeValue);
         this.ngControl.control?.setValue(numValue, { emitEvent: false });
         element.value = negativeValue;
@@ -67,15 +72,36 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
     }
 
     if (e.key === 'Backspace') {
+      let isDeleteDecimalPoint = false;
+      // Nếu xóa dấu ngăn cách thập phân thì bỏ qua và xóa chữ số trước dấu ngăn cách thập phân
       const idxOfDecimalPoint = element.value.indexOf(',');
       if (idxOfDecimalPoint !== -1 && idxOfDecimalPoint === (posStart - 1)) {
         this.setSectionRange(idxOfDecimalPoint, idxOfDecimalPoint);
+        isDeleteDecimalPoint = true;
       }
+      
+      let currentValue = '';
+      // Nếu đang bôi tất cả và xóa thì về 0
+      if (posStart === 0 && posEnd === value.length) {
+        currentValue = '0';
+      } else {
+        // xóa từng số
+        const pos = posStart - (isDeleteDecimalPoint ? 2 : 1);
+        currentValue = this.removeAt(value, pos);
+        element.selectionStart = pos;
+        element.selectionEnd = pos;
+      }
+      
+      this.setValue(element, currentValue, false);
+
+      e.preventDefault();
     }
 
+    // Nếu nhập số
     if ((keyCode >= 48 && keyCode <= 57) || (keyCode >= 96 && keyCode <= 105)) {
       var currentValue = this.splice(posStart, value, e.key);
 
+      // Nếu số lượng chữ số phần nguyên > số lượng cấu hình thì block
       var splitDecimals = currentValue.split(',');
       var lengthOfInt = splitDecimals[0].split('.').join('').length;
       if (lengthOfInt > (this.config.maxIntegerDigit || 0)) {
@@ -83,18 +109,25 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
       }
 
       var length = value.length;
+      // Nếu trỏ chuột đặt ở cuối phần thập phân thì không nhập nữa
       if (splitDecimals.length > 1 && length === posStart) {
         e.preventDefault();
       } else {
         const decimalPosition = value.indexOf(',');
 
+        // Nhập phần thập phân
         if (decimalPosition !== -1 && posStart > decimalPosition) {
           var currentValue = this.typeDecimalPlace(value, posStart, e.key);
           var numValue = this.stringToNumber(currentValue);
           this.ngControl.control?.setValue(numValue, { emitEvent: false });
           element.value = currentValue;
           this.setSectionRange(posStart + 1, posStart + 1);
-
+          e.preventDefault();
+        } else {
+          element.value = currentValue;
+          element.selectionStart = posStart + (posEnd === value.length ? currentValue.length : 1);
+          element.selectionEnd = posStart + (posEnd === value.length ? currentValue.length : 1);
+          this.setValue(element, currentValue, false);
           e.preventDefault();
         }
       }
@@ -105,6 +138,7 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
     var element = this.el.nativeElement;
     let keyCode = (e.keyCode ? e.keyCode : e.which);
 
+    // Nếu nhập ',' thì dịch trỏ chuột đến số đầu tiên phần thập phân
     if ((keyCode === 188 || e.key === ',') && element.value.indexOf(',') !== -1) {
       const pos = element.value.indexOf(',');
       this.setSectionRange(pos + 1, pos + 1);
@@ -117,32 +151,36 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
     this.ngControl.valueChanges?.subscribe((res: any) => {
       setTimeout(() => {
         var element = this.el.nativeElement;
-        let posStart = element.selectionStart;
-        let posEnd = element.selectionEnd;
-
-        var isEmpty = !element.value;
-
-        const oldLength = element.value.toString().split('.').length - 1;
-        element.value = this.formatCurrencyFromSetValue(element.value || '0', typeof res === 'number');
-        const oldValue = element.value.toString().replaceAll('.', '').replaceAll(',', '.');
-
-        var transFormValue = this.formatToCurrency(oldValue) as any;
-        var numValue = this.stringToNumber(transFormValue);
-
-        this.ngControl.control?.setValue(numValue, { emitEvent: false });
-        element.value = transFormValue;
-        element.style.textAlign = this.config.align;
-        const newLength = element.value.toString().split('.').length - 1;
-
-        let offset = newLength - oldLength;
-        if (isEmpty || Math.floor(numValue).toString().length === 1) {
-          posStart = 1;
-          posEnd = 1;
-        }
-
-        this.setSectionRange(posStart, posEnd, offset);
+        this.setValue(element, element.value, typeof res === 'number');
       }, 0);
     });
+  }
+
+  setValue(element: any, value: any, isNumber: boolean) {
+    let posStart = element.selectionStart;
+    let posEnd = element.selectionEnd;
+
+    var isEmpty = !value;
+
+    const oldLength = value.toString().split('.').length - 1;
+    value = this.formatCurrencyFromSetValue(value || '0', isNumber);
+    const oldValue = value.toString().replaceAll('.', '').replaceAll(',', '.');
+
+    var transFormValue = this.formatToCurrency(oldValue) as any;
+    var numValue = this.stringToNumber(transFormValue);
+
+    this.ngControl.control?.setValue(numValue, { emitEvent: false });
+    element.value = transFormValue;
+    element.style.textAlign = this.config.align;
+    const newLength = element.value.toString().split('.').length - 1;
+
+    let offset = newLength - oldLength;
+    if (isEmpty || Math.floor(numValue).toString().length === 1) {
+      posStart = 1;
+      posEnd = 1;
+    }
+
+    this.setSectionRange(posStart, posEnd, offset);
   }
 
   ngOnChanges(changes: any): void {
@@ -210,8 +248,12 @@ export class CurrencyMaskDirective implements OnInit, OnChanges {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   }
 
-  splice(idx: any, source: any, value: any) {
+  splice(idx: any, source: any, value: any): any {
     return `${source.slice(0, idx)}${value}${source.slice(idx)}`;
+  }
+
+  removeAt(source: any, index: any): any {
+    return source.slice(0, index) + source.slice(index + 1);
   }
 
   replaceAt(source: string, index: number, replacement: string) {
