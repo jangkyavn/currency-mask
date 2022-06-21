@@ -1,31 +1,3 @@
-<input [(ngModel)]="text" />
-<input [(ngModel)]="value" appCurrencyMask [config]="{ precision: 4 }" />
+<input [(ngModel)]="value" appCurrencyMask [options]="{ precision: 4 }" />
 <button type="button" (click)="submit()">save</button>
 <button type="button" (click)="setValue()">setValue</button>
-
-<!-- <button type="button" (click)="add()">add</button><button type="button" (click)="submit()">save</button><button type="button" (click)="update()">update</button>
-<br />
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Quantity</th>
-            <th>Price</th>
-            <th>TotalAmount</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr *ngFor="let item of listData; let i=index">
-            <td>
-                <input type="text" [(ngModel)]="item.name" />
-            </td>
-            <td>
-                <input [(ngModel)]="item.quantity" appCurrencyMask [config]="{ precision: 6, allowNegative: false }" (blur)="detectValue(item)" />
-            </td>
-            <td>
-                <input [(ngModel)]="item.price" appCurrencyMask [config]="{ precision: 6 }" (blur)="detectValue(item)" />
-            </td>
-            <td>{{item.totalAmount}}</td>
-        </tr>
-    </tbody>
-</table> -->
